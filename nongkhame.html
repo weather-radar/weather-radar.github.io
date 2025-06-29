@@ -71,7 +71,7 @@
                 alt: "Your current location on radar",
                 riseOnHover: true
             }).addTo(map)
-              .bindPopup(`Your location<br>Lat: ${e.latitude.toFixed(4)}<br>Lon: ${e.longitude.toFixed(4)}`)
+              .bindPopup(`${e.latitude.toFixed(4)},${e.longitude.toFixed(4)}`)
               .openPopup();
         }
 
