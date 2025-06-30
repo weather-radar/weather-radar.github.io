@@ -9,6 +9,7 @@
             margin: 0; 
             padding: 0; 
             font-family: Arial, sans-serif;
+            overflow: hidden;
         }
         #map { 
             width: 100vw; 
@@ -28,15 +29,12 @@
             box-shadow: 0 -2px 5px rgba(0,0,0,0.2);
         }
         
-        /* Fix for Leaflet attribution on mobile */
+        /* Attribution control styling */
         .leaflet-control-attribution {
-            font-size: 9px !important;
-            max-width: 60vw !important;
-            white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            background: rgba(255, 255, 255, 0.7) !important;
-            margin-right: 40px !important; /* Space for potential zoom control */
+            font-size: 11px;
+            background: rgba(255, 255, 255, 0.8) !important;
+            padding: 2px 5px !important;
+            margin: 0 !important;
         }
         
         @media (max-width: 768px) {
@@ -46,44 +44,127 @@
                 line-height: 35px;
             }
             .leaflet-control-attribution {
-                font-size: 8px !important;
-                max-width: 50vw !important;
+                font-size: 9px !important;
+                max-width: 50vw;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
         }
     </style>
 </head>
 <body>
-    <!-- Rest of your HTML remains the same -->
     <div id="map"></div>
     <div id="countdown">Auto-refreshing in 120 seconds</div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Initialize map with forced attribution control
+        // Countdown timer fix
+        let seconds = 120;
+        const countdownEl = document.getElementById('countdown');
+        
+        function updateCountdown() {
+            countdownEl.textContent = `Auto-refreshing in ${seconds} seconds`;
+            if (seconds <= 0) {
+                location.reload();
+            }
+            seconds--;
+        }
+        
+        // Initialize countdown immediately
+        updateCountdown();
+        const countdownInterval = setInterval(updateCountdown, 1000);
+
+        // Radar image parameters for Bangkok
+        const radarImage = {
+            url: 'https://weather.bangkok.go.th/Images/Radar/radarh.jpg?' + Date.now(), // Cache buster
+            width: 1920,
+            height: 1600,
+            centerX: 960,
+            centerY: 800,
+            scale: 740.741,
+            stationLat: 13.834804,
+            stationLon: 100.846332
+        };
+
+        // Initialize map with forced attribution
         const map = L.map('map', {
             crs: L.CRS.Simple,
             minZoom: -1,
             maxZoom: 5,
             attributionControl: true
+        }).setView([0, 0], 0);
+
+        // Set up attribution
+        map.attributionControl.setPrefix('<a href="https://leafletjs.com/">Leaflet</a> | Radar: <a href="https://weather.bangkok.go.th/">Bangkok Weather</a>');
+
+        // Calculate image bounds
+        const southWest = map.unproject([0, radarImage.height], map.getMaxZoom()-1);
+        const northEast = map.unproject([radarImage.width, 0], map.getMaxZoom()-1);
+        const bounds = new L.LatLngBounds(southWest, northEast);
+
+        // Add radar image overlay with error handling
+        const imageLayer = L.imageOverlay(radarImage.url, bounds, {
+            errorOverlayUrl: '',
+            alt: 'Bangkok Radar Image',
+            interactive: true
+        }).addTo(map);
+        
+        imageLayer.on('error', function() {
+            console.error('Failed to load radar image');
+            // Try reloading the image with a new cache buster
+            imageLayer.setUrl(radarImage.url.split('?')[0] + '?' + Date.now());
         });
 
-        // Manually add attribution if needed
-        map.attributionControl.setPrefix('<a href="https://leafletjs.com/" target="_blank">Leaflet</a> | Radar data: <a href="https://weather.bangkok.go.th/" target="_blank">Bangkok Weather</a>');
-        
-        // Force the attribution control to stay visible
-        map.attributionControl.addTo(map);
-        
-        // Rest of your existing JavaScript code...
-        // (Radar image parameters, countdown timer, etc.)
-        
-        // After map initialization, ensure attribution is visible
+        map.fitBounds(bounds);
+
+        // Convert geographic coordinates to radar image coordinates
+        function latLonToPoint(lat, lon) {
+            const deltaLat = lat - radarImage.stationLat;
+            const deltaLon = lon - radarImage.stationLon;
+            const latRad = radarImage.stationLat * Math.PI / 180;
+            const horizontalScale = radarImage.scale * Math.cos(latRad);
+            const x = radarImage.centerX + (deltaLon * horizontalScale);
+            const y = radarImage.centerY - (deltaLat * radarImage.scale);
+            return map.unproject([x, y], map.getMaxZoom()-1);
+        }
+
+        // Geolocation functions
+        function onLocationFound(e) {
+            const userPoint = latLonToPoint(e.latitude, e.longitude);
+            L.marker(userPoint, {
+                title: "Your Location",
+                alt: "Your current location on radar",
+                riseOnHover: true
+            }).addTo(map)
+              .bindPopup(`${e.latitude.toFixed(4)},${e.longitude.toFixed(4)}`)
+              .openPopup();
+        }
+
+        function onLocationError(e) {
+            console.error("Geolocation error:", e.message);
+        }
+
+        // Set up location event handlers
+        map.on('locationfound', onLocationFound);
+        map.on('locationerror', onLocationError);
+
+        // Try to locate user
+        map.locate({
+            setView: false,
+            enableHighAccuracy: true,
+            timeout: 10000
+        });
+
+        // Force attribution visibility on all devices
         setTimeout(() => {
             const attribution = document.querySelector('.leaflet-control-attribution');
             if (attribution) {
                 attribution.style.display = 'block';
                 attribution.style.visibility = 'visible';
+                attribution.style.opacity = '1';
             }
-        }, 1000);
+        }, 500);
     </script>
 </body>
 </html>
