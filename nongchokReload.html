@@ -112,6 +112,12 @@
             attributionControl: true
         });
 
+        // Manually add attribution if needed
+        map.attributionControl.setPrefix('<a href="https://leafletjs.com/" target="_blank">Leaflet</a> | Radar data: <a href="https://weather.bangkok.go.th/" target="_blank">Bangkok Weather</a>');
+
+        // Force the attribution control to stay visible
+        map.attributionControl.addTo(map);
+
         // Calculate image bounds (Leaflet uses bottom-left as [0,0])
         const southWest = map.unproject([0, radarImage.height], map.getMaxZoom()-1);
         const northEast = map.unproject([radarImage.width, 0], map.getMaxZoom()-1);
