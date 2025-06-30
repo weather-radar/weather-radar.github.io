@@ -10,6 +10,7 @@
             padding: 0; 
             font-family: Arial, sans-serif;
             overflow: hidden;
+            touch-action: none;
         }
         #map { 
             width: 100vw; 
@@ -29,26 +30,37 @@
             box-shadow: 0 -2px 5px rgba(0,0,0,0.2);
         }
         
-        /* Attribution control styling */
+        /* Mobile-first attribution styling */
         .leaflet-control-attribution {
-            font-size: 11px;
-            background: rgba(255, 255, 255, 0.8) !important;
-            padding: 2px 5px !important;
+            font-size: 10px;
+            background: rgba(255, 255, 255, 0.9) !important;
+            padding: 4px 8px !important;
             margin: 0 !important;
+            max-width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            position: fixed !important;
+            right: 0;
+            bottom: 40px !important; /* Above countdown */
+            left: auto !important;
+            top: auto !important;
+            z-index: 1001 !important;
+            pointer-events: auto !important;
+            transform: none !important;
+            transition: none !important;
+            opacity: 1 !important;
+            display: block !important;
+            visibility: visible !important;
         }
         
-        @media (max-width: 768px) {
-            #countdown {
-                font-size: 14px;
-                height: 35px;
-                line-height: 35px;
-            }
+        /* Desktop-specific adjustments */
+        @media (min-width: 768px) {
             .leaflet-control-attribution {
-                font-size: 9px !important;
-                max-width: 50vw;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
+                font-size: 11px;
+                max-width: none;
+                white-space: normal;
+                bottom: 0 !important;
             }
         }
     </style>
@@ -59,7 +71,7 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Countdown timer fix
+        // Initialize countdown first to ensure DOM is ready
         let seconds = 120;
         const countdownEl = document.getElementById('countdown');
         
@@ -67,17 +79,17 @@
             countdownEl.textContent = `Auto-refreshing in ${seconds} seconds`;
             if (seconds <= 0) {
                 location.reload();
+                return;
             }
             seconds--;
         }
         
-        // Initialize countdown immediately
         updateCountdown();
         const countdownInterval = setInterval(updateCountdown, 1000);
 
-        // Radar image parameters for Bangkok
+        // Radar image with cache busting
         const radarImage = {
-            url: 'https://weather.bangkok.go.th/Images/Radar/radarh.jpg?' + Date.now(), // Cache buster
+            url: 'https://weather.bangkok.go.th/Images/Radar/radarh.jpg?' + Date.now(),
             width: 1920,
             height: 1600,
             centerX: 960,
@@ -87,23 +99,32 @@
             stationLon: 100.846332
         };
 
-        // Initialize map with forced attribution
+        // Initialize map with custom attribution control
         const map = L.map('map', {
             crs: L.CRS.Simple,
             minZoom: -1,
             maxZoom: 5,
-            attributionControl: true
+            attributionControl: false // We'll add it manually
         }).setView([0, 0], 0);
 
-        // Set up attribution
-        map.attributionControl.setPrefix('<a href="https://leafletjs.com/">Leaflet</a> | Radar: <a href="https://weather.bangkok.go.th/">Bangkok Weather</a>');
+        // Create custom attribution control
+        const attribution = L.control.attribution({
+            position: 'bottomright',
+            prefix: '<a href="https://leafletjs.com/" target="_blank">Leaflet</a> | Radar: <a href="https://weather.bangkok.go.th/" target="_blank">Bangkok Weather</a>'
+        }).addTo(map);
 
-        // Calculate image bounds
-        const southWest = map.unproject([0, radarImage.height], map.getMaxZoom()-1);
-        const northEast = map.unproject([radarImage.width, 0], map.getMaxZoom()-1);
-        const bounds = new L.LatLngBounds(southWest, northEast);
+        // Force mobile attribution visibility
+        function enforceAttributionVisibility() {
+            const attributionElement = document.querySelector('.leaflet-control-attribution');
+            if (attributionElement) {
+                attributionElement.style.display = 'block';
+                attributionElement.style.visibility = 'visible';
+                attributionElement.style.opacity = '1';
+                attributionElement.style.pointerEvents = 'auto';
+            }
+        }
 
-        // Add radar image overlay with error handling
+        // Add radar image with error handling
         const imageLayer = L.imageOverlay(radarImage.url, bounds, {
             errorOverlayUrl: '',
             alt: 'Bangkok Radar Image',
@@ -111,23 +132,14 @@
         }).addTo(map);
         
         imageLayer.on('error', function() {
-            console.error('Failed to load radar image');
-            // Try reloading the image with a new cache buster
             imageLayer.setUrl(radarImage.url.split('?')[0] + '?' + Date.now());
         });
 
+        // Calculate bounds and fit map
+        const southWest = map.unproject([0, radarImage.height], map.getMaxZoom()-1);
+        const northEast = map.unproject([radarImage.width, 0], map.getMaxZoom()-1);
+        const bounds = new L.LatLngBounds(southWest, northEast);
         map.fitBounds(bounds);
-
-        // Convert geographic coordinates to radar image coordinates
-        function latLonToPoint(lat, lon) {
-            const deltaLat = lat - radarImage.stationLat;
-            const deltaLon = lon - radarImage.stationLon;
-            const latRad = radarImage.stationLat * Math.PI / 180;
-            const horizontalScale = radarImage.scale * Math.cos(latRad);
-            const x = radarImage.centerX + (deltaLon * horizontalScale);
-            const y = radarImage.centerY - (deltaLat * radarImage.scale);
-            return map.unproject([x, y], map.getMaxZoom()-1);
-        }
 
         // Geolocation functions
         function onLocationFound(e) {
@@ -145,26 +157,37 @@
             console.error("Geolocation error:", e.message);
         }
 
-        // Set up location event handlers
+        // Coordinate conversion
+        function latLonToPoint(lat, lon) {
+            const deltaLat = lat - radarImage.stationLat;
+            const deltaLon = lon - radarImage.stationLon;
+            const latRad = radarImage.stationLat * Math.PI / 180;
+            const horizontalScale = radarImage.scale * Math.cos(latRad);
+            const x = radarImage.centerX + (deltaLon * horizontalScale);
+            const y = radarImage.centerY - (deltaLat * radarImage.scale);
+            return map.unproject([x, y], map.getMaxZoom()-1);
+        }
+
+        // Set up event handlers
         map.on('locationfound', onLocationFound);
         map.on('locationerror', onLocationError);
-
-        // Try to locate user
         map.locate({
             setView: false,
             enableHighAccuracy: true,
             timeout: 10000
         });
 
-        // Force attribution visibility on all devices
-        setTimeout(() => {
-            const attribution = document.querySelector('.leaflet-control-attribution');
-            if (attribution) {
-                attribution.style.display = 'block';
-                attribution.style.visibility = 'visible';
-                attribution.style.opacity = '1';
-            }
-        }, 500);
+        // Mobile-specific initialization
+        if (/Mobi|Android/i.test(navigator.userAgent)) {
+            // Force attribution visibility on mobile
+            setTimeout(enforceAttributionVisibility, 500);
+            
+            // Periodically check visibility (for touch devices)
+            setInterval(enforceAttributionVisibility, 3000);
+            
+            // Make sure attribution stays visible after interactions
+            map.on('moveend zoomend', enforceAttributionVisibility);
+        }
     </script>
 </body>
 </html>
