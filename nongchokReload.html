@@ -5,14 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body { margin: 0; padding: 0; }
-        #map { width: 100vw; height: calc(100vh - 30px); }
-        #countdown {
-            height: 30px;
-            background: #f0f0f0;
-            text-align: center;
-            line-height: 30px;
+        body { 
+            margin: 0; 
+            padding: 0; 
             font-family: Arial, sans-serif;
+        }
+        #map { 
+            width: 100vw; 
+            height: calc(100vh - 40px); 
+        }
+        #countdown {
+            height: 40px;
+            background: #2c3e50;
+            color: white;
+            text-align: center;
+            line-height: 40px;
+            font-size: 16px;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.2);
+        }
+        @media (max-width: 768px) {
+            #countdown {
+                font-size: 14px;
+                height: 35px;
+                line-height: 35px;
+            }
         }
     </style>
 </head>
@@ -22,7 +42,7 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Countdown timer for auto-refresh
+        // Countdown timer for auto-refresh - mobile friendly version
         let seconds = 120;
         const countdownEl = document.getElementById('countdown');
         
@@ -35,7 +55,9 @@
             }
         }
         
-        setInterval(updateCountdown, 1000);
+        // Initialize countdown immediately
+        updateCountdown();
+        const countdownInterval = setInterval(updateCountdown, 1000);
 
         // Radar image parameters for Bangkok
         const radarImage = {
