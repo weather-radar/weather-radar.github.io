@@ -26,18 +26,36 @@
             width: 100%;
             z-index: 1000;
         }
+        
+        /* Mobile-first attribution styling */
         .leaflet-control-attribution {
-            background: rgba(255, 255, 255, 0.8) !important;
-            font-size: 11px !important;
-            padding: 2px 5px !important;
+            background: rgba(255, 255, 255, 0.9) !important;
+            font-size: 10px !important;
+            padding: 4px 8px !important;
+            margin: 0 !important;
+            max-width: 100% !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            position: fixed !important;
+            right: 0 !important;
+            bottom: 40px !important;
+            left: auto !important;
+            top: auto !important;
+            z-index: 1001 !important;
+            pointer-events: auto !important;
+            opacity: 1 !important;
+            display: block !important;
+            visibility: visible !important;
         }
-        @media (max-width: 768px) {
+        
+        /* Desktop adjustments */
+        @media (min-width: 768px) {
             .leaflet-control-attribution {
-                font-size: 9px !important;
-                max-width: 60vw;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
+                position: absolute !important;
+                font-size: 11px !important;
+                bottom: 0 !important;
+                white-space: normal !important;
             }
         }
     </style>
@@ -48,7 +66,7 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Working countdown timer
+        // Countdown timer
         let seconds = 120;
         const countdownEl = document.getElementById('countdown');
         
@@ -75,19 +93,19 @@
             stationLon: 100.846332
         };
 
-        // Initialize map with proper attribution
+        // Initialize map with custom attribution control
         const map = L.map('map', {
             crs: L.CRS.Simple,
             minZoom: -1,
             maxZoom: 5,
-            attributionControl: true
+            attributionControl: false // We'll create our own
         });
 
-        // Set attribution content
-        map.attributionControl.setPrefix(
-            '<a href="https://leafletjs.com/" target="_blank">Leaflet</a> | ' +
-            'Radar: <a href="https://weather.bangkok.go.th/" target="_blank">Bangkok Weather</a>'
-        );
+        // Create custom attribution control
+        const attribution = L.control.attribution({
+            position: 'bottomright',
+            prefix: '<a href="https://leafletjs.com/" target="_blank">Leaflet</a> | Radar: <a href="https://weather.bangkok.go.th/" target="_blank">Bangkok Weather</a>'
+        }).addTo(map);
 
         // Calculate image bounds
         const southWest = map.unproject([0, radarImage.height], map.getMaxZoom()-1);
@@ -103,22 +121,34 @@
 
         // Handle image loading errors
         imageLayer.on('error', function() {
-            console.log('Image load error, retrying...');
             imageLayer.setUrl(radarImage.url.split('?')[0] + '?' + Date.now());
         });
 
         // Fit map to image bounds
         map.fitBounds(bounds);
 
-        // Force attribution visibility
-        setTimeout(() => {
-            const attribution = document.querySelector('.leaflet-control-attribution');
-            if (attribution) {
-                attribution.style.display = 'block';
-                attribution.style.visibility = 'visible';
-                attribution.style.opacity = '1';
+        // Mobile-specific attribution enforcement
+        function enforceMobileAttribution() {
+            const attributionElement = document.querySelector('.leaflet-control-attribution');
+            if (attributionElement) {
+                attributionElement.style.display = 'block';
+                attributionElement.style.visibility = 'visible';
+                attributionElement.style.opacity = '1';
+                attributionElement.style.pointerEvents = 'auto';
             }
-        }, 500);
+        }
+
+        // Check if mobile and enforce attribution
+        if (/Mobi|Android/i.test(navigator.userAgent)) {
+            // Initial enforcement
+            setTimeout(enforceMobileAttribution, 500);
+            
+            // Periodic checks (in case mobile browser tries to hide it)
+            setInterval(enforceMobileAttribution, 2000);
+            
+            // Re-enforce after map interactions
+            map.on('moveend zoomend', enforceMobileAttribution);
+        }
 
         // Geolocation functions
         function onLocationFound(e) {
