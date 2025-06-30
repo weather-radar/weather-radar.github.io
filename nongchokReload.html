@@ -2,19 +2,17 @@
 <html>
 <head>
     <title>Nong Chok Radar Location Marker</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body { 
-            margin: 0; 
-            padding: 0; 
+        body {
+            margin: 0;
+            padding: 0;
             font-family: Arial, sans-serif;
-            overflow: hidden;
-            touch-action: none;
         }
-        #map { 
-            width: 100vw; 
-            height: calc(100vh - 40px); 
+        #map {
+            width: 100vw;
+            height: calc(100vh - 40px);
         }
         #countdown {
             height: 40px;
@@ -27,40 +25,19 @@
             bottom: 0;
             width: 100%;
             z-index: 1000;
-            box-shadow: 0 -2px 5px rgba(0,0,0,0.2);
         }
-        
-        /* Mobile-first attribution styling */
         .leaflet-control-attribution {
-            font-size: 10px;
-            background: rgba(255, 255, 255, 0.9) !important;
-            padding: 4px 8px !important;
-            margin: 0 !important;
-            max-width: 100%;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            position: fixed !important;
-            right: 0;
-            bottom: 40px !important; /* Above countdown */
-            left: auto !important;
-            top: auto !important;
-            z-index: 1001 !important;
-            pointer-events: auto !important;
-            transform: none !important;
-            transition: none !important;
-            opacity: 1 !important;
-            display: block !important;
-            visibility: visible !important;
+            background: rgba(255, 255, 255, 0.8) !important;
+            font-size: 11px !important;
+            padding: 2px 5px !important;
         }
-        
-        /* Desktop-specific adjustments */
-        @media (min-width: 768px) {
+        @media (max-width: 768px) {
             .leaflet-control-attribution {
-                font-size: 11px;
-                max-width: none;
-                white-space: normal;
-                bottom: 0 !important;
+                font-size: 9px !important;
+                max-width: 60vw;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
         }
     </style>
@@ -71,7 +48,7 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Initialize countdown first to ensure DOM is ready
+        // Working countdown timer
         let seconds = 120;
         const countdownEl = document.getElementById('countdown');
         
@@ -83,9 +60,8 @@
             }
             seconds--;
         }
-        
         updateCountdown();
-        const countdownInterval = setInterval(updateCountdown, 1000);
+        setInterval(updateCountdown, 1000);
 
         // Radar image with cache busting
         const radarImage = {
@@ -99,30 +75,24 @@
             stationLon: 100.846332
         };
 
-        // Initialize map with custom attribution control
+        // Initialize map with proper attribution
         const map = L.map('map', {
             crs: L.CRS.Simple,
             minZoom: -1,
             maxZoom: 5,
-            attributionControl: false // We'll add it manually
-        }).setView([0, 0], 0);
+            attributionControl: true
+        });
 
-        // Create custom attribution control
-        const attribution = L.control.attribution({
-            position: 'bottomright',
-            prefix: '<a href="https://leafletjs.com/" target="_blank">Leaflet</a> | Radar: <a href="https://weather.bangkok.go.th/" target="_blank">Bangkok Weather</a>'
-        }).addTo(map);
+        // Set attribution content
+        map.attributionControl.setPrefix(
+            '<a href="https://leafletjs.com/" target="_blank">Leaflet</a> | ' +
+            'Radar: <a href="https://weather.bangkok.go.th/" target="_blank">Bangkok Weather</a>'
+        );
 
-        // Force mobile attribution visibility
-        function enforceAttributionVisibility() {
-            const attributionElement = document.querySelector('.leaflet-control-attribution');
-            if (attributionElement) {
-                attributionElement.style.display = 'block';
-                attributionElement.style.visibility = 'visible';
-                attributionElement.style.opacity = '1';
-                attributionElement.style.pointerEvents = 'auto';
-            }
-        }
+        // Calculate image bounds
+        const southWest = map.unproject([0, radarImage.height], map.getMaxZoom()-1);
+        const northEast = map.unproject([radarImage.width, 0], map.getMaxZoom()-1);
+        const bounds = new L.LatLngBounds(southWest, northEast);
 
         // Add radar image with error handling
         const imageLayer = L.imageOverlay(radarImage.url, bounds, {
@@ -130,45 +100,47 @@
             alt: 'Bangkok Radar Image',
             interactive: true
         }).addTo(map);
-        
+
+        // Handle image loading errors
         imageLayer.on('error', function() {
+            console.log('Image load error, retrying...');
             imageLayer.setUrl(radarImage.url.split('?')[0] + '?' + Date.now());
         });
 
-        // Calculate bounds and fit map
-        const southWest = map.unproject([0, radarImage.height], map.getMaxZoom()-1);
-        const northEast = map.unproject([radarImage.width, 0], map.getMaxZoom()-1);
-        const bounds = new L.LatLngBounds(southWest, northEast);
+        // Fit map to image bounds
         map.fitBounds(bounds);
+
+        // Force attribution visibility
+        setTimeout(() => {
+            const attribution = document.querySelector('.leaflet-control-attribution');
+            if (attribution) {
+                attribution.style.display = 'block';
+                attribution.style.visibility = 'visible';
+                attribution.style.opacity = '1';
+            }
+        }, 500);
 
         // Geolocation functions
         function onLocationFound(e) {
-            const userPoint = latLonToPoint(e.latitude, e.longitude);
+            const userPoint = map.unproject([
+                radarImage.centerX + (e.longitude - radarImage.stationLon) * radarImage.scale * Math.cos(radarImage.stationLat * Math.PI / 180),
+                radarImage.centerY - (e.latitude - radarImage.stationLat) * radarImage.scale
+            ], map.getMaxZoom()-1);
+            
             L.marker(userPoint, {
                 title: "Your Location",
                 alt: "Your current location on radar",
                 riseOnHover: true
             }).addTo(map)
-              .bindPopup(`${e.latitude.toFixed(4)},${e.longitude.toFixed(4)}`)
+              .bindPopup(`Your location: ${e.latitude.toFixed(4)}, ${e.longitude.toFixed(4)}`)
               .openPopup();
         }
 
         function onLocationError(e) {
-            console.error("Geolocation error:", e.message);
+            console.log("Geolocation error:", e.message);
         }
 
-        // Coordinate conversion
-        function latLonToPoint(lat, lon) {
-            const deltaLat = lat - radarImage.stationLat;
-            const deltaLon = lon - radarImage.stationLon;
-            const latRad = radarImage.stationLat * Math.PI / 180;
-            const horizontalScale = radarImage.scale * Math.cos(latRad);
-            const x = radarImage.centerX + (deltaLon * horizontalScale);
-            const y = radarImage.centerY - (deltaLat * radarImage.scale);
-            return map.unproject([x, y], map.getMaxZoom()-1);
-        }
-
-        // Set up event handlers
+        // Set up location tracking
         map.on('locationfound', onLocationFound);
         map.on('locationerror', onLocationError);
         map.locate({
@@ -176,18 +148,6 @@
             enableHighAccuracy: true,
             timeout: 10000
         });
-
-        // Mobile-specific initialization
-        if (/Mobi|Android/i.test(navigator.userAgent)) {
-            // Force attribution visibility on mobile
-            setTimeout(enforceAttributionVisibility, 500);
-            
-            // Periodically check visibility (for touch devices)
-            setInterval(enforceAttributionVisibility, 3000);
-            
-            // Make sure attribution stays visible after interactions
-            map.on('moveend zoomend', enforceAttributionVisibility);
-        }
     </script>
 </body>
 </html>
