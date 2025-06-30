@@ -2,7 +2,7 @@
 <html>
 <head>
     <title>Nong Chok Radar Location Marker</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { 
@@ -27,115 +27,63 @@
             z-index: 1000;
             box-shadow: 0 -2px 5px rgba(0,0,0,0.2);
         }
+        
+        /* Fix for Leaflet attribution on mobile */
+        .leaflet-control-attribution {
+            font-size: 9px !important;
+            max-width: 60vw !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            background: rgba(255, 255, 255, 0.7) !important;
+            margin-right: 40px !important; /* Space for potential zoom control */
+        }
+        
         @media (max-width: 768px) {
             #countdown {
                 font-size: 14px;
                 height: 35px;
                 line-height: 35px;
             }
+            .leaflet-control-attribution {
+                font-size: 8px !important;
+                max-width: 50vw !important;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- Rest of your HTML remains the same -->
     <div id="map"></div>
     <div id="countdown">Auto-refreshing in 120 seconds</div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Countdown timer for auto-refresh - mobile friendly version
-        let seconds = 120;
-        const countdownEl = document.getElementById('countdown');
-        
-        function updateCountdown() {
-            countdownEl.textContent = `Auto-refreshing in ${seconds} seconds`;
-            seconds--;
-            
-            if (seconds < 0) {
-                location.reload();
-            }
-        }
-        
-        // Initialize countdown immediately
-        updateCountdown();
-        const countdownInterval = setInterval(updateCountdown, 1000);
-
-        // Radar image parameters for Bangkok
-        const radarImage = {
-            url: 'https://weather.bangkok.go.th/Images/Radar/radarh.jpg',
-            width: 1920,      // Image width in pixels
-            height: 1600,     // Image height in pixels
-            centerX: 960,    // Station X position in image
-            centerY: 800,     // Station Y position in image
-            scale: 740.741,   // Pixels per degree (vertical scale)
-            stationLat: 13.834804,  // Radar station latitude (N)
-            stationLon: 100.846332  // Radar station longitude (E)
-        };
-
-        // Initialize map with simple coordinate system
+        // Initialize map with forced attribution control
         const map = L.map('map', {
-            crs: L.CRS.Simple,  // Use simple coordinate system for flat image
+            crs: L.CRS.Simple,
             minZoom: -1,
             maxZoom: 5,
             attributionControl: true
         });
 
-        // Calculate image bounds (Leaflet uses bottom-left as [0,0])
-        const southWest = map.unproject([0, radarImage.height], map.getMaxZoom()-1);
-        const northEast = map.unproject([radarImage.width, 0], map.getMaxZoom()-1);
-        const bounds = new L.LatLngBounds(southWest, northEast);
-
-        // Add radar image overlay
-        L.imageOverlay(radarImage.url, bounds).addTo(map);
-        map.fitBounds(bounds);
-
-        // Convert geographic coordinates to radar image coordinates
-        function latLonToPoint(lat, lon) {
-            // Calculate differences from station location
-            const deltaLat = lat - radarImage.stationLat;
-            const deltaLon = lon - radarImage.stationLon;
-            
-            // Calculate horizontal scale (adjusted for latitude)
-            const latRad = radarImage.stationLat * Math.PI / 180;
-            const horizontalScale = radarImage.scale * Math.cos(latRad);
-            
-            // Calculate x,y position (accounting for y-axis inversion)
-            const x = radarImage.centerX + (deltaLon * horizontalScale);
-            const y = radarImage.centerY - (deltaLat * radarImage.scale);
-            
-            // Convert to Leaflet coordinates
-            return map.unproject([x, y], map.getMaxZoom()-1);
-        }
-
-        // Handle successful location detection
-        function onLocationFound(e) {
-            const userPoint = latLonToPoint(e.latitude, e.longitude);
-            
-            // Add marker at user's location
-            L.marker(userPoint, {
-                title: "Your Location",
-                alt: "Your current location on radar",
-                riseOnHover: true
-            }).addTo(map)
-              .bindPopup(`${e.latitude.toFixed(4)},${e.longitude.toFixed(4)}`)
-              .openPopup();
-        }
-
-        // Handle location errors
-        function onLocationError(e) {
-            console.error("Geolocation error:", e.message);
-            alert("Could not get your location: " + e.message);
-        }
-
-        // Set up location event handlers
-        map.on('locationfound', onLocationFound);
-        map.on('locationerror', onLocationError);
-
-        // Try to locate user immediately when page loads
-        map.locate({
-            setView: false,          // Don't change map view
-            enableHighAccuracy: true, // Use GPS if available
-            timeout: 10000           // Timeout after 10 seconds
-        });
+        // Manually add attribution if needed
+        map.attributionControl.setPrefix('<a href="https://leafletjs.com/" target="_blank">Leaflet</a> | Radar data: <a href="https://weather.bangkok.go.th/" target="_blank">Bangkok Weather</a>');
+        
+        // Force the attribution control to stay visible
+        map.attributionControl.addTo(map);
+        
+        // Rest of your existing JavaScript code...
+        // (Radar image parameters, countdown timer, etc.)
+        
+        // After map initialization, ensure attribution is visible
+        setTimeout(() => {
+            const attribution = document.querySelector('.leaflet-control-attribution');
+            if (attribution) {
+                attribution.style.display = 'block';
+                attribution.style.visibility = 'visible';
+            }
+        }, 1000);
     </script>
 </body>
 </html>
