@@ -8,7 +8,7 @@
         body { margin: 0; padding: 0; }
         #map { width: 100vw; height: 100vh; }
         
-        /* Custom attribution styling for mobile */
+        /* Custom attribution styling */
         .leaflet-control-attribution {
             font-size: 11px;
             background-color: rgba(255, 255, 255, 0.7);
@@ -16,12 +16,34 @@
             margin: 0;
             max-width: 100%;
             box-sizing: border-box;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
         }
         
-        /* Ensure attribution is clickable on mobile */
+        /* Desktop version - show full text */
+        .leaflet-control-attribution .full-attribution {
+            display: inline;
+        }
+        
+        /* Mobile version - show shortened text */
+        .leaflet-control-attribution .mobile-attribution {
+            display: none;
+        }
+        
+        /* Mobile devices - switch to short attribution */
+        @media (max-width: 768px) {
+            .leaflet-control-attribution .full-attribution {
+                display: none;
+            }
+            .leaflet-control-attribution .mobile-attribution {
+                display: inline;
+            }
+            .leaflet-control-attribution {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+        }
+        
+        /* Ensure attribution links are clickable */
         .leaflet-control-attribution a {
             pointer-events: auto;
         }
@@ -61,11 +83,17 @@
         L.imageOverlay(radarImage.url, bounds).addTo(map);
         map.fitBounds(bounds);
 
-        // Set custom attribution content
-        map.attributionControl.setPrefix(
-            '<a href="https://weather.bangkok.go.th/" target="_blank">Bangkok Weather Radar</a> | ' +
-            '<a href="https://leafletjs.com/" target="_blank">Leaflet</a>'
-        );
+        // Set custom attribution content with both desktop and mobile versions
+        map.attributionControl.setPrefix(`
+            <span class="full-attribution">
+                <a href="https://weather.bangkok.go.th/" target="_blank">Bangkok Weather Radar</a> | 
+                <a href="https://leafletjs.com/" target="_blank">Leaflet</a>
+            </span>
+            <span class="mobile-attribution">
+                <a href="https://weather.bangkok.go.th/" target="_blank">BKK Radar</a> | 
+                <a href="https://leafletjs.com/" target="_blank">Leaflet</a>
+            </span>
+        `);
 
         // Convert geographic coordinates to radar image coordinates
         function latLonToPoint(lat, lon) {
