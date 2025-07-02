@@ -8,44 +8,57 @@
         body { margin: 0; padding: 0; }
         #map { width: 100vw; height: 100vh; }
         
-        /* Custom attribution styling */
+        /* Base attribution styling - more visible */
         .leaflet-control-attribution {
-            font-size: 11px;
-            background-color: rgba(255, 255, 255, 0.7);
-            padding: 2px 5px;
+            font-size: 12px;
+            background-color: rgba(255, 255, 255, 0.9) !important;
+            padding: 4px 8px !important;
             margin: 0;
             max-width: 100%;
             box-sizing: border-box;
+            border-radius: 4px !important;
+            box-shadow: 0 0 8px rgba(0,0,0,0.2) !important;
+            color: #333 !important;
+            border: 1px solid #ccc !important;
         }
         
-        /* Desktop version - show full text */
-        .leaflet-control-attribution .full-attribution {
+        .leaflet-control-attribution a {
+            color: #0066cc !important;
+            font-weight: bold;
+            pointer-events: auto;
+        }
+        
+        /* Desktop version */
+        .attribution-desktop {
             display: inline;
         }
         
-        /* Mobile version - show shortened text */
-        .leaflet-control-attribution .mobile-attribution {
+        /* Mobile version */
+        .attribution-mobile {
             display: none;
         }
         
-        /* Mobile devices - switch to short attribution */
+        /* Debug border - can remove after testing */
+        .leaflet-control-attribution {
+            border: 2px solid red !important;
+        }
+        
+        /* Mobile responsive switch */
         @media (max-width: 768px) {
-            .leaflet-control-attribution .full-attribution {
+            .attribution-desktop {
                 display: none;
             }
-            .leaflet-control-attribution .mobile-attribution {
+            .attribution-mobile {
                 display: inline;
             }
             .leaflet-control-attribution {
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
+                max-width: 90vw;
+                font-size: 11px;
+                padding: 3px 6px !important;
             }
-        }
-        
-        /* Ensure attribution links are clickable */
-        .leaflet-control-attribution a {
-            pointer-events: auto;
         }
     </style>
 </head>
@@ -54,70 +67,67 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Radar image parameters for Bangkok
-        const radarImage = {
-            url: 'https://weather.bangkok.go.th/Images/Radar/radarh.jpg',
-            width: 1920,      // Image width in pixels
-            height: 1600,     // Image height in pixels
-            centerX: 960,    // Station X position in image
-            centerY: 800,     // Station Y position in image
-            scale: 740.741,   // Pixels per degree (vertical scale)
-            stationLat: 13.834804,  // Radar station latitude (N)
-            stationLon: 100.846332  // Radar station longitude (E)
-        };
-
-        // Initialize map with simple coordinate system
+        // Initialize map
         const map = L.map('map', {
-            crs: L.CRS.Simple,  // Use simple coordinate system for flat image
+            crs: L.CRS.Simple,
             minZoom: -1,
             maxZoom: 5,
             attributionControl: true
         });
 
-        // Calculate image bounds (Leaflet uses bottom-left as [0,0])
+        // Radar image parameters
+        const radarImage = {
+            url: 'https://weather.bangkok.go.th/Images/Radar/radarh.jpg',
+            width: 1920,
+            height: 1600,
+            centerX: 960,
+            centerY: 800,
+            scale: 740.741,
+            stationLat: 13.834804,
+            stationLon: 100.846332
+        };
+
+        // Set image bounds
         const southWest = map.unproject([0, radarImage.height], map.getMaxZoom()-1);
         const northEast = map.unproject([radarImage.width, 0], map.getMaxZoom()-1);
         const bounds = new L.LatLngBounds(southWest, northEast);
 
-        // Add radar image overlay
+        // Add overlay and fit bounds
         L.imageOverlay(radarImage.url, bounds).addTo(map);
         map.fitBounds(bounds);
 
-        // Set custom attribution content with both desktop and mobile versions
+        // Custom attribution with clear differentiation
         map.attributionControl.setPrefix(`
-            <span class="full-attribution">
-                <a href="https://weather.bangkok.go.th/" target="_blank">Bangkok Weather Radar</a> | 
-                <a href="https://leafletjs.com/" target="_blank">Leaflet</a>
+            <span class="attribution-desktop">
+                Data: <a href="https://weather.bangkok.go.th/" target="_blank">Bangkok Weather Radar</a> | 
+                Map: <a href="https://leafletjs.com/" target="_blank">Leaflet</a>
             </span>
-            <span class="mobile-attribution">
+            <span class="attribution-mobile">
                 <a href="https://weather.bangkok.go.th/" target="_blank">BKK Radar</a> | 
                 <a href="https://leafletjs.com/" target="_blank">Leaflet</a>
             </span>
         `);
 
-        // Convert geographic coordinates to radar image coordinates
+        // Force attribution control to update
+        map.attributionControl._update();
+
+        // Debug output
+        console.log("Attribution control initialized");
+        console.log("Current attribution:", map.attributionControl._container.innerHTML);
+
+        // Rest of your existing code...
         function latLonToPoint(lat, lon) {
-            // Calculate differences from station location
             const deltaLat = lat - radarImage.stationLat;
             const deltaLon = lon - radarImage.stationLon;
-            
-            // Calculate horizontal scale (adjusted for latitude)
             const latRad = radarImage.stationLat * Math.PI / 180;
             const horizontalScale = radarImage.scale * Math.cos(latRad);
-            
-            // Calculate x,y position (accounting for y-axis inversion)
             const x = radarImage.centerX + (deltaLon * horizontalScale);
             const y = radarImage.centerY - (deltaLat * radarImage.scale);
-            
-            // Convert to Leaflet coordinates
             return map.unproject([x, y], map.getMaxZoom()-1);
         }
 
-        // Handle successful location detection
         function onLocationFound(e) {
             const userPoint = latLonToPoint(e.latitude, e.longitude);
-            
-            // Add marker at user's location
             L.marker(userPoint, {
                 title: "Your Location",
                 alt: "Your current location on radar",
@@ -127,21 +137,18 @@
               .openPopup();
         }
 
-        // Handle location errors
         function onLocationError(e) {
             console.error("Geolocation error:", e.message);
             alert("Could not get your location: " + e.message);
         }
 
-        // Set up location event handlers
         map.on('locationfound', onLocationFound);
         map.on('locationerror', onLocationError);
 
-        // Try to locate user immediately when page loads
         map.locate({
-            setView: false,          // Don't change map view
-            enableHighAccuracy: true, // Use GPS if available
-            timeout: 10000           // Timeout after 10 seconds
+            setView: false,
+            enableHighAccuracy: true,
+            timeout: 10000
         });
     </script>
 </body>
