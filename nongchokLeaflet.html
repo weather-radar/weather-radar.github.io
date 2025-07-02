@@ -5,108 +5,106 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body { margin: 0; padding: 0; overflow: hidden; }
-        #map { width: 100vw; height: 100vh; position: fixed; }
+        body { 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            touch-action: none;
+        }
+        #map { 
+            width: 100vw; 
+            height: 100vh; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+        }
         
-        /* Base attribution styling - always visible */
-        .leaflet-control-attribution {
-            font-size: 12px;
-            background-color: rgba(255, 255, 255, 0.95) !important;
-            padding: 6px 10px !important;
-            margin: 0 !important;
-            max-width: 100%;
-            box-sizing: border-box;
-            border-radius: 4px !important;
-            box-shadow: 0 0 10px rgba(0,0,0,0.3) !important;
-            color: #333 !important;
-            border: 2px solid #aaa !important;
-            position: absolute !important;
-            bottom: 5px !important;
+        /* Custom attribution container - completely overrides Leaflet's */
+        #custom-attribution {
+            position: fixed !important;
             left: 5px !important;
             right: 5px !important;
+            bottom: 5px !important;
             z-index: 1000 !important;
+            background-color: rgba(255, 255, 255, 0.95) !important;
+            padding: 8px 12px !important;
+            border-radius: 4px !important;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3) !important;
+            border: 2px solid #aaa !important;
+            font-size: 12px !important;
+            color: #333 !important;
+            text-align: center !important;
             display: block !important;
             visibility: visible !important;
             opacity: 1 !important;
+            max-width: calc(100vw - 10px) !important;
+            box-sizing: border-box !important;
         }
         
-        .leaflet-control-attribution a {
+        #custom-attribution a {
             color: #0066cc !important;
-            font-weight: bold;
-            pointer-events: auto;
-            text-decoration: underline;
-        }
-        
-        /* Desktop version */
-        .attribution-desktop {
-            display: inline;
+            font-weight: bold !important;
+            text-decoration: underline !important;
+            pointer-events: auto !important;
         }
         
         /* Mobile version */
-        .attribution-mobile {
-            display: none;
-        }
-        
-        /* Mobile responsive switch */
         @media (max-width: 768px), (orientation: portrait) {
-            .attribution-desktop {
-                display: none;
-            }
-            .attribution-mobile {
-                display: inline;
-            }
-            .leaflet-control-attribution {
-                font-size: 11px;
-                padding: 4px 8px !important;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                max-width: calc(100vw - 10px);
-                bottom: 5px !important;
+            #custom-attribution {
+                font-size: 11px !important;
+                padding: 6px 10px !important;
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
             }
         }
         
-        /* Debug element - shows if mobile media query activates */
-        #mobile-debug {
+        /* Debug elements */
+        #debug-info {
             position: fixed;
             top: 10px;
-            right: 10px;
-            background: red;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
             color: white;
-            padding: 5px;
+            padding: 8px;
             z-index: 1001;
-            display: none;
-        }
-        @media (max-width: 768px), (orientation: portrait) {
-            #mobile-debug {
-                display: block;
-            }
+            font-family: monospace;
+            font-size: 12px;
+            border-radius: 4px;
         }
     </style>
 </head>
 <body>
-    <div id="mobile-debug">MOBILE VIEW</div>
+    <div id="debug-info">Debug Info Loading...</div>
+    <div id="custom-attribution"></div>
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Debug output
-        console.log('Initializing map...');
+        // Debug function
+        function updateDebugInfo() {
+            const debugEl = document.getElementById('debug-info');
+            const isMobile = window.innerWidth <= 768 || window.matchMedia("(orientation: portrait)").matches;
+            debugEl.innerHTML = `
+                Screen: ${window.innerWidth}×${window.innerHeight}<br>
+                Device: ${isMobile ? 'MOBILE' : 'DESKTOP'}<br>
+                DPR: ${window.devicePixelRatio}<br>
+                AttrVisible: ${document.getElementById('custom-attribution').style.display !== 'none'}
+            `;
+        }
+
+        // Initialize debug info
+        updateDebugInfo();
+        setInterval(updateDebugInfo, 1000);
         
-        // Initialize map with forced attribution
+        // Initialize map with NO default attribution
         const map = L.map('map', {
             crs: L.CRS.Simple,
             minZoom: -1,
             maxZoom: 5,
-            attributionControl: false // We'll add it manually
+            attributionControl: false // Disable Leaflet's default
         });
 
-        // Manually create and add attribution control
-        const attributionControl = L.control.attribution({
-            position: 'bottomleft',
-            prefix: ''
-        }).addTo(map);
-        
         // Radar image parameters
         const radarImage = {
             url: 'https://weather.bangkok.go.th/Images/Radar/radarh.jpg',
@@ -128,46 +126,35 @@
         L.imageOverlay(radarImage.url, bounds).addTo(map);
         map.fitBounds(bounds);
 
-        // Function to update attribution based on screen size
+        // Custom attribution management
         function updateAttribution() {
+            const attributionEl = document.getElementById('custom-attribution');
             const isMobile = window.innerWidth <= 768 || window.matchMedia("(orientation: portrait)").matches;
-            console.log('Updating attribution, isMobile:', isMobile);
             
             if (isMobile) {
-                attributionControl.setPrefix(`
-                    <span class="attribution-mobile">
-                        <a href="https://weather.bangkok.go.th/" target="_blank">BKK Radar</a> | 
-                        <a href="https://leafletjs.com/" target="_blank">Leaflet</a>
-                    </span>
-                `);
+                attributionEl.innerHTML = `
+                    <a href="https://weather.bangkok.go.th/" target="_blank">BKK Radar</a> | 
+                    <a href="https://leafletjs.com/" target="_blank">Leaflet</a>
+                `;
             } else {
-                attributionControl.setPrefix(`
-                    <span class="attribution-desktop">
-                        Data: <a href="https://weather.bangkok.go.th/" target="_blank">Bangkok Weather Radar</a> | 
-                        Map: <a href="https://leafletjs.com/" target="_blank">Leaflet</a>
-                    </span>
-                `);
+                attributionEl.innerHTML = `
+                    Data: <a href="https://weather.bangkok.go.th/" target="_blank">Bangkok Weather Radar</a> | 
+                    Map: <a href="https://leafletjs.com/" target="_blank">Leaflet</a>
+                `;
             }
             
-            // Force update and make visible
-            attributionControl._container.style.display = 'block';
-            attributionControl._container.style.visibility = 'visible';
-            attributionControl._container.style.opacity = '1';
-            attributionControl._update();
+            // Force visible
+            attributionEl.style.display = 'block';
+            attributionEl.style.visibility = 'visible';
+            attributionEl.style.opacity = '1';
         }
 
-        // Initial update
+        // Initialize attribution
         updateAttribution();
         
-        // Update on resize
+        // Update on resize/orientation change
         window.addEventListener('resize', updateAttribution);
         window.addEventListener('orientationchange', updateAttribution);
-
-        // Debug: Log attribution container status
-        setTimeout(() => {
-            console.log('Attribution container:', attributionControl._container);
-            console.log('Computed styles:', window.getComputedStyle(attributionControl._container));
-        }, 1000);
 
         // Rest of your existing code...
         function latLonToPoint(lat, lon) {
@@ -204,6 +191,14 @@
             enableHighAccuracy: true,
             timeout: 10000
         });
+
+        // Final debug check
+        setTimeout(() => {
+            console.log('Final check - custom attribution element:');
+            console.log(document.getElementById('custom-attribution'));
+            console.log('Computed styles:', 
+                window.getComputedStyle(document.getElementById('custom-attribution')));
+        }, 2000);
     </script>
 </body>
 </html>
