@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Nong Chok Radar Location Marker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            touch-action: none;
+        }
+        #map { 
+            width: 100vw; 
+            height: 100vh; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+        }
+        
+        /* Custom attribution container */
+        #custom-attribution {
+            position: fixed !important;
+            left: 5px !important;
+            right: 5px !important;
+            bottom: 5px !important;
+            z-index: 1000 !important;
+            background-color: rgba(255, 255, 255, 0.95) !important;
+            padding: 8px 12px !important;
+            border-radius: 4px !important;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3) !important;
+            border: 1px solid #aaa !important;
+            font-size: 12px !important;
+            color: #333 !important;
+            text-align: center !important;
+            max-width: calc(100vw - 10px) !important;
+            box-sizing: border-box !important;
+        }
+        
+        #custom-attribution a {
+            color: #0066cc !important;
+            font-weight: bold !important;
+            text-decoration: underline !important;
+        }
+        
+        /* Timer style */
+        #reload-timer {
+            display: inline-block;
+            margin-left: 8px;
+            font-weight: bold;
+            color: #d9534f;
+        }
+        
+        /* Mobile version */
+        @media (max-width: 768px), (orientation: portrait) {
+            #custom-attribution {
+                font-size: 11px !important;
+                padding: 6px 10px !important;
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="custom-attribution"></div>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Reload interval in seconds
+        const RELOAD_INTERVAL = 120;
+        let reloadTimer = RELOAD_INTERVAL;
+        let timerInterval;
+
+        // Initialize map with NO default attribution
+        const map = L.map('map', {
+            crs: L.CRS.Simple,
+            minZoom: -1,
+            maxZoom: 5,
+            zoomSnap: 0.1,      // Set your desired zoom step size
+            zoomDelta: 0.1,     // Same as zoomSnap for consistency
+            wheelPxPerZoomLevel: 60,  // Makes mouse wheel zooming smoother
+            attributionControl: false
+        });
+
+        // Radar image parameters
+        const radarImage = {
+            url: 'https://weather.bangkok.go.th/Images/Radar/radarh.jpg?_=' + Date.now(),
+            width: 1920,
+            height: 1600,
+            centerX: 960,
+            centerY: 800,
+            scale: 740.741,
+            stationLat: 13.834804,
+            stationLon: 100.846332
+        };
+
+        // Set image bounds
+        const southWest = map.unproject([0, radarImage.height], map.getMaxZoom()-1);
+        const northEast = map.unproject([radarImage.width, 0], map.getMaxZoom()-1);
+        const bounds = new L.LatLngBounds(southWest, northEast);
+
+        // Add overlay and fit bounds
+        L.imageOverlay(radarImage.url, bounds).addTo(map);
+        map.fitBounds(bounds);
+
+        // Start the reload timer
+        function startReloadTimer() {
+            clearInterval(timerInterval);
+            reloadTimer = RELOAD_INTERVAL;
+            updateTimerDisplay();
+            
+            timerInterval = setInterval(() => {
+                reloadTimer--;
+                updateTimerDisplay();
+                
+                if (reloadTimer <= 0) {
+                    reloadRadarImage();
+                    reloadTimer = RELOAD_INTERVAL;
+                }
+            }, 1000);
+        }
+
+        // Update the timer display in attribution
+        function updateTimerDisplay() {
+            const timerElement = document.getElementById('reload-timer');
+            if (timerElement) {
+                const minutes = Math.floor(reloadTimer / 60);
+                const seconds = reloadTimer % 60;
+                timerElement.textContent = `(${minutes}:${seconds.toString().padStart(2, '0')})`;
+            }
+        }
+
+        // Reload the radar image
+        function reloadRadarImage() {
+            // Update URL with cache-busting timestamp
+            const newUrl = 'https://weather.bangkok.go.th/Images/Radar/radarh.jpg?_=' + Date.now();
+            
+            // Update the image overlay
+            map.eachLayer(layer => {
+                if (layer instanceof L.ImageOverlay) {
+                    layer.setUrl(newUrl);
+                }
+            });
+            
+            // Restart the timer
+            startReloadTimer();
+        }
+
+        // Custom attribution management
+        function updateAttribution() {
+            const attributionEl = document.getElementById('custom-attribution');
+            const isMobile = window.innerWidth <= 768 || window.matchMedia("(orientation: portrait)").matches;
+            
+            if (isMobile) {
+                attributionEl.innerHTML = `
+                    <a href="https://weather.bangkok.go.th/" target="_blank">BKK Radar</a> | 
+                    <a href="https://leafletjs.com/" target="_blank">Leaflet</a>
+                    <span id="reload-timer"></span>
+                `;
+            } else {
+                attributionEl.innerHTML = `
+                    Data: <a href="https://weather.bangkok.go.th/" target="_blank">Bangkok Weather Radar</a> | 
+                    Map: <a href="https://leafletjs.com/" target="_blank">Leaflet</a>
+                    <span id="reload-timer"></span>
+                `;
+            }
+            
+            // Initialize the timer display
+            updateTimerDisplay();
+        }
+
+        // Initialize attribution and timer
+        updateAttribution();
+        startReloadTimer();
+        
+        // Update on resize/orientation change
+        window.addEventListener('resize', updateAttribution);
+        window.addEventListener('orientationchange', updateAttribution);
+
+        // Location functions
+        function latLonToPoint(lat, lon) {
+            const deltaLat = lat - radarImage.stationLat;
+            const deltaLon = lon - radarImage.stationLon;
+            const latRad = radarImage.stationLat * Math.PI / 180;
+            const horizontalScale = radarImage.scale * Math.cos(latRad);
+            const x = radarImage.centerX + (deltaLon * horizontalScale);
+            const y = radarImage.centerY - (deltaLat * radarImage.scale);
+            return map.unproject([x, y], map.getMaxZoom()-1);
+        }
+
+        function onLocationFound(e) {
+            const userPoint = latLonToPoint(e.latitude, e.longitude);
+            L.marker(userPoint, {
+                title: "Your Location",
+                alt: "Your current location on radar",
+                riseOnHover: true
+            }).addTo(map)
+              .bindPopup(`${e.latitude.toFixed(4)},${e.longitude.toFixed(4)}`)
+        }
+
+        function onLocationError(e) {
+            console.error("Geolocation error:", e.message);
+            alert("Could not get your location: " + e.message);
+        }
+
+        map.on('locationfound', onLocationFound);
+        map.on('locationerror', onLocationError);
+
+        map.locate({
+            setView: false,
+            enableHighAccuracy: true,
+            timeout: 10000
+        });
+    </script>
+</body>
+</html>
