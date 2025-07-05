@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Nong Khame Radar Location Marker</title>
+    <title>Nong Khame Radar Loop Location Marker</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -14,14 +14,14 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Radar image parameters for Nong Khaem
+        // Radar image parameters for Bangkok
         const radarImage = {
-            url: 'https://weather.bangkok.go.th/Images/Radar/nkradarh.jpg',
-            width: 1920,      // Image width in pixels
-            height: 1600,     // Image height in pixels
-            centerX: 960,    // Station X position in image
-            centerY: 800,     // Station Y position in image
-            scale: 740.741,   // Pixels per degree (vertical scale)
+            url: 'https://weather.bangkok.go.th/Images/Radar/nkradar.gif',
+            width: 965,      // Image width in pixels
+            height: 800,     // Image height in pixels
+            centerX: 482,    // Station X position in image
+            centerY: 400,     // Station Y position in image
+            scale: 370.37,   // Pixels per degree (vertical scale)
             stationLat: 13.737716,  // Radar station latitude (N)
             stationLon: 100.358873  // Radar station longitude (E)
         };
