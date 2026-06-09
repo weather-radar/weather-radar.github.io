@@ -88,7 +88,7 @@
 
         // Radar image parameters
         const radarImage = {
-            url: 'https://weather.bangkok.go.th/Images/Radar/radar.gif?_=' + Date.now(),
+            url: 'https://weather.tmd.go.th/pic_bmancLoop.gif?_=' + Date.now(),
             width: 965,
             height: 800,
             centerX: 482,
@@ -137,7 +137,7 @@
         // Reload the radar image
         function reloadRadarImage() {
             // Update URL with cache-busting timestamp
-            const newUrl = 'https://weather.bangkok.go.th/Images/Radar/radar.gif?_=' + Date.now();
+            const newUrl = 'https://weather.tmd.go.th/pic_bmancLoop.gif?_=' + Date.now();
             
             // Update the image overlay
             map.eachLayer(layer => {
