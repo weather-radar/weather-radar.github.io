@@ -88,12 +88,12 @@
 
         // Radar image parameters
         const radarImage = {
-            url: 'https://weather.bangkok.go.th/Images/Radar/radarh.jpg?_=' + Date.now(),
-            width: 1920,
-            height: 1600,
-            centerX: 960,
-            centerY: 800,
-            scale: 740.741,
+            url: 'https://weather.tmd.go.th/pic_bmanck.jpg?_=' + Date.now(),
+            width: 965,
+            height: 800,
+            centerX: 482,
+            centerY: 400,
+            scale: 370.37,
             stationLat: 13.834804,
             stationLon: 100.846332
         };
@@ -137,7 +137,7 @@
         // Reload the radar image
         function reloadRadarImage() {
             // Update URL with cache-busting timestamp
-            const newUrl = 'https://weather.bangkok.go.th/Images/Radar/radarh.jpg?_=' + Date.now();
+            const newUrl = 'https://weather.tmd.go.th/pic_bmanck.jpg?_=' + Date.now();
             
             // Update the image overlay
             map.eachLayer(layer => {
